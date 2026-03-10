@@ -91,13 +91,6 @@ export function createCalendarView(
       selectedEventEl = arg.el;
       selectedEventEl.classList.add('is-selected');
       if (typeof onTaskClick === 'function') onTaskClick(task);
-    },
-    eventDidMount: (info) => {
-      // subtle styling for completed tasks
-      if (info.event.classNames.includes('is-done')) {
-        info.el.style.opacity = '0.55';
-        info.el.style.filter = 'grayscale(0.2)';
-      }
     }
   });
 

@@ -46,10 +46,13 @@ function renderTaskDetail() {
   const task = state.selectedTask;
   const box = document.querySelector("#taskDetail");
   const empty = document.querySelector("#taskDetailEmpty");
+  const btn = document.querySelector("#btnDetailToggleComplete");
+  const stateEl = document.querySelector("#detailState");
   if (!box || !empty) return;
   if (!task) {
     box.classList.add("hidden");
     empty.classList.remove("hidden");
+    if (btn) btn.disabled = true;
     return;
   }
   empty.classList.add("hidden");
@@ -64,7 +67,36 @@ function renderTaskDetail() {
     task.start_date || task.end_date
       ? `${formatDateLabel(task.start_date)} ~ ${formatDateLabel(task.end_date)}`
       : "未设置";
-  document.querySelector("#detailState").textContent = task.completed ? "已完成" : "进行中";
+  if (stateEl) {
+    stateEl.textContent = task.completed ? "已完成" : "进行中";
+    stateEl.classList.toggle("is-done", !!task.completed);
+    stateEl.classList.toggle("is-open", !task.completed);
+  }
+  if (btn) {
+    btn.disabled = false;
+    btn.textContent = task.completed ? "标记为未完成" : "完成任务";
+    btn.classList.toggle("btn-primary", !task.completed);
+    btn.classList.toggle("btn-secondary", !!task.completed);
+  }
+}
+
+async function toggleSelectedTask() {
+  const task = state.selectedTask;
+  const btn = document.querySelector("#btnDetailToggleComplete");
+  if (!task || !btn) return;
+  btn.disabled = true;
+  try {
+    const data = await api(`/api/tasks/${task.id}/toggle`, { method: "PATCH" });
+    const nextTask = data?.task || null;
+    const hiddenByFilter = state.onlyIncomplete && !!nextTask?.completed;
+    state.selectedTask = hiddenByFilter ? null : nextTask;
+    renderTaskDetail();
+    state.calendar?.clearSelection();
+    state.calendar?.refetch();
+  } catch (e) {
+    alert("更新任务状态失败：" + e.message);
+    btn.disabled = false;
+  }
 }
 
 function render() {
@@ -108,6 +140,9 @@ async function bootstrap() {
     render();
     state.calendar?.refetch();
     renderTaskDetail();
+  });
+  document.querySelector("#btnDetailToggleComplete").addEventListener("click", () => {
+    toggleSelectedTask();
   });
 
   render();
