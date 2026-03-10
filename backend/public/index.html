@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>任务目标 · 本地任务看板</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/ui.css" />
+    <style>
+      /* make form inputs inside a dark app look consistent */
+      input[type="date"]::-webkit-calendar-picker-indicator {
+        opacity: 0.75;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="min-h-screen">
+      <header class="app-header sticky top-0 z-10">
+        <div class="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
+          <div class="flex items-center gap-3">
+            <div class="brand-dot"></div>
+            <div>
+              <div class="text-lg font-semibold leading-5">任务目标</div>
+              <div class="text-xs muted">本地 · 未完成优先 · 标签筛选</div>
+            </div>
+          </div>
+          <div class="flex items-center gap-3">
+            <a
+              href="/calendar.html"
+              class="btn btn-secondary"
+            >
+              日历
+            </a>
+            <button
+              id="btnAdd"
+              class="btn btn-primary"
+            >
+              新增任务
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main class="mx-auto grid max-w-6xl grid-cols-1 gap-4 px-4 py-5 lg:grid-cols-[260px_1fr_360px]">
+        <aside class="card flat p-4">
+          <div class="mb-3 flex items-center justify-between">
+            <div class="text-sm font-semibold">标签</div>
+            <button id="btnResetTag" class="btn btn-ghost" style="height:28px;padding:0 .5rem;font-size:12px">清除</button>
+          </div>
+
+          <div id="tagList" class="flex flex-wrap gap-2"></div>
+
+          <div class="mt-4 border-t border-black/10 pt-4">
+            <div class="flex items-center justify-between">
+              <div class="text-sm font-semibold">视图</div>
+            </div>
+            <label class="mt-2 flex cursor-pointer items-center gap-2 text-sm muted">
+              <input id="chkOnlyIncomplete" type="checkbox" class="h-4 w-4 accent-cyan-400" checked />
+              仅看未完成
+            </label>
+          </div>
+        </aside>
+
+        <section class="card flat">
+          <div class="card-header flex items-center justify-between px-4 py-3">
+            <div class="text-sm font-semibold">
+              <span id="viewTitle">未完成任务</span>
+              <span id="viewMeta" class="ml-2 text-xs font-normal muted"></span>
+            </div>
+            <button
+              id="btnRefresh"
+              class="btn btn-secondary"
+              style="height:28px;font-size:12px"
+            >
+              刷新
+            </button>
+          </div>
+          <div id="taskList" class="divide-y divide-black/10"></div>
+          <div id="emptyState" class="hidden p-8 text-center text-sm muted">
+            暂无任务。点击右上角「新增任务」开始吧。
+          </div>
+        </section>
+
+        <!-- editor panel (no modal) -->
+        <aside class="lg:block">
+          <div
+            id="editorPanel"
+            class="card flat sticky top-[76px] hidden"
+          >
+            <div class="card-header px-4 py-3">
+              <div class="flex items-start justify-between gap-3">
+                <div>
+                  <div id="editorTitle" class="text-sm font-semibold">新建任务</div>
+                  <div class="mt-1 text-xs muted">同屏编辑 · 更适配移动端/窗口缩放</div>
+                </div>
+                <button
+                  id="btnEditorClose"
+                  class="btn btn-ghost"
+                  style="height:28px;padding:0 .5rem;font-size:12px"
+                  type="button"
+                >
+                  收起
+                </button>
+              </div>
+            </div>
+
+            <div class="grid gap-3 px-4 py-4">
+              <label class="grid gap-1">
+                <span class="text-xs muted">任务标题</span>
+                <input
+                  id="edTitle"
+                  class="input"
+                  placeholder="例如：完成本周复盘"
+                />
+              </label>
+
+              <label class="grid gap-1">
+                <span class="text-xs font-semibold" style="color:#075985">目标（更重要）</span>
+                <textarea
+                  id="edGoal"
+                  rows="5"
+                  class="textarea"
+                  placeholder="写清楚你要的结果（可验证）"
+                ></textarea>
+              </label>
+
+              <label class="grid gap-1">
+                <span class="text-xs muted">DDL（截止日期）</span>
+                <input
+                  id="edDue"
+                  type="date"
+                  class="input"
+                />
+                <div class="help">不填则表示无截止日期。</div>
+              </label>
+
+              <div class="grid gap-2 card flat p-3" style="box-shadow:none">
+                <div class="text-xs font-semibold">持续时间（a ~ b）</div>
+                <div class="grid grid-cols-2 gap-2">
+                  <label class="grid gap-1">
+                    <span class="text-xs muted">开始 a</span>
+                    <input
+                      id="edStart"
+                      type="date"
+                      class="input"
+                    />
+                  </label>
+                  <label class="grid gap-1">
+                    <span class="text-xs muted">结束 b</span>
+                    <input
+                      id="edEnd"
+                      type="date"
+                      class="input"
+                    />
+                  </label>
+                </div>
+                <div class="help">用于日历视图：a~b 的每一天都会显示这个任务。</div>
+              </div>
+
+              <div class="card flat p-3" style="box-shadow:none">
+                <div class="flex items-center justify-between">
+                  <div class="text-xs font-semibold">标签</div>
+                  <button id="btnEdClearTag" class="btn btn-ghost" style="height:26px;padding:0 .5rem;font-size:12px" type="button">清除</button>
+                </div>
+                <div id="edTagChips" class="mt-2 flex flex-wrap gap-2"></div>
+                <div class="mt-3 flex gap-2">
+                  <input
+                    id="edNewTag"
+                    class="input"
+                    placeholder="输入新标签并回车"
+                    autocomplete="off"
+                  />
+                  <button
+                    id="btnEdAddTag"
+                    type="button"
+                    class="btn btn-secondary"
+                    style="height:auto"
+                  >
+                    创建
+                  </button>
+                </div>
+                <div class="mt-2 help">默认标签：长期 / 短期</div>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between gap-2 border-t border-black/10 px-4 py-3">
+              <button
+                id="btnEdDelete"
+                type="button"
+                class="btn btn-danger hidden"
+              >
+                删除
+              </button>
+              <div class="flex items-center gap-2">
+                <button
+                  id="btnEdNew"
+                  type="button"
+                  class="btn btn-secondary"
+                >
+                  新建
+                </button>
+                <button
+                  id="btnEdSave"
+                  type="button"
+                  class="btn btn-primary"
+                >
+                  保存
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- mobile bottom sheet -->
+          <div
+            id="editorSheet"
+            class="fixed inset-x-0 bottom-0 z-20 hidden rounded-t-xl border-t border-white/10 bg-slate-950/95 backdrop-blur"
+          >
+            <div class="mx-auto max-w-6xl px-4">
+              <div class="flex items-center justify-between py-3">
+                <div class="text-sm font-semibold" id="sheetTitle">编辑</div>
+                <button id="btnSheetClose" class="rounded-md bg-white/10 px-3 py-1.5 text-xs hover:bg-white/15" type="button">关闭</button>
+              </div>
+            </div>
+            <div class="max-h-[75vh] overflow-auto">
+              <!-- reuse same editorPanel DOM on mobile by cloning is overkill; keep a hint -->
+              <div class="px-4 pb-4 text-xs text-slate-400">
+                在小屏幕下建议把窗口拉宽一点使用右侧编辑面板（当前版本先聚焦桌面同屏体验）。
+              </div>
+            </div>
+          </div>
+        </aside>
+      </main>
+    </div>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
+
