@@ -25,12 +25,10 @@
             </div>
           </div>
           <div class="flex items-center gap-3">
-            <a
-              href="/calendar.html"
-              class="btn btn-secondary"
-            >
-              日历
-            </a>
+            <nav class="segmented">
+              <a href="/" class="seg active">列表</a>
+              <a href="/calendar.html" class="seg">日历</a>
+            </nav>
             <button
               id="btnAdd"
               class="btn btn-primary"
@@ -42,7 +40,7 @@
       </header>
 
       <main class="mx-auto grid max-w-6xl grid-cols-1 gap-4 px-4 py-5 lg:grid-cols-[260px_1fr_360px]">
-        <aside class="card flat p-4">
+        <aside class="sidebar p-4">
           <div class="mb-3 flex items-center justify-between">
             <div class="text-sm font-semibold">标签</div>
             <button id="btnResetTag" class="btn btn-ghost" style="height:28px;padding:0 .5rem;font-size:12px">清除</button>
@@ -75,7 +73,7 @@
               刷新
             </button>
           </div>
-          <div id="taskList" class="divide-y divide-black/10"></div>
+          <div id="taskList" class="task-list"></div>
           <div id="emptyState" class="hidden p-8 text-center text-sm muted">
             暂无任务。点击右上角「新增任务」开始吧。
           </div>

@@ -9,15 +9,14 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.css" />
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
     <style>
-      /* calendar theme (clean + hackmd-ish squarer corners) */
       .fc {
         --fc-border-color: var(--border-2);
         --fc-page-bg-color: transparent;
         --fc-neutral-bg-color: transparent;
-        --fc-today-bg-color: var(--primary-2);
-        --fc-event-bg-color: var(--primary-2);
-        --fc-event-border-color: rgba(14,165,233,.25);
-        --fc-event-text-color: #075985;
+        --fc-today-bg-color: transparent;
+        --fc-event-bg-color: #F0F4F8;
+        --fc-event-border-color: rgba(234,234,234,1);
+        --fc-event-text-color: var(--fg);
         --fc-button-bg-color: var(--accent);
         --fc-button-border-color: var(--border-2);
         --fc-button-text-color: var(--fg);
@@ -25,6 +24,7 @@
         --fc-button-hover-border-color: var(--border-2);
         --fc-button-active-bg-color: var(--accent-2);
         --fc-button-active-border-color: var(--border-2);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
       }
       .fc .fc-button {
         border-radius: var(--radius-sm);
@@ -36,7 +36,6 @@
         color: var(--fg);
         letter-spacing: -0.01em;
       }
-      /* toolbar layout + modern segmented-ish buttons */
       .fc .fc-header-toolbar {
         margin-bottom: 10px;
       }
@@ -50,41 +49,31 @@
         gap: 10px;
       }
       .fc .fc-button-group {
-        border-radius: 10px;
+        border-radius: 6px;
         overflow: hidden;
-        border: 1px solid rgba(15,23,42,.06);
-        background: rgba(2,6,23,.03);
+        border: 1px solid var(--border-2);
+        background: var(--accent);
       }
       .fc .fc-button-group .fc-button {
         border: none;
         background: transparent;
         height: 32px;
         padding: 0 10px;
-        color: rgba(15,23,42,.86);
+        color: var(--fg);
       }
       .fc .fc-button-group .fc-button:hover {
-        background: rgba(2,6,23,.06);
+        background: var(--accent-2);
       }
       .fc .fc-button-group .fc-button:focus {
         box-shadow: none;
       }
       .fc .fc-button-primary:not(:disabled).fc-button-active,
       .fc .fc-button-primary:not(:disabled):active {
-        background: rgba(2,6,23,.07);
-        color: rgba(15,23,42,.92);
+        background: var(--accent-2);
+        color: var(--fg);
       }
       .fc .fc-daygrid-event {
-        border-radius: 8px;
-      }
-      .fc .fc-daygrid-event.is-done {
-        --fc-event-bg-color: rgba(2,6,23,.04);
-        --fc-event-border-color: rgba(2,6,23,.10);
-        --fc-event-text-color: var(--muted);
-      }
-      .fc .fc-daygrid-event.is-open {
-        --fc-event-bg-color: var(--primary-2);
-        --fc-event-border-color: rgba(14,165,233,.25);
-        --fc-event-text-color: #075985;
+        border-radius: 6px;
       }
       .fc .fc-scrollgrid {
         border-radius: var(--radius);
@@ -93,114 +82,137 @@
       .fc a {
         color: inherit;
       }
-      /* grid lines：水平线轻微、隐藏大部分竖线 */
       .fc-theme-standard td,
-      .fc-theme-standard th {
-        border-color: rgba(15,23,42,.04);
-      }
+      .fc-theme-standard th { border-color: #e5e7eb; }
       .fc-theme-standard .fc-scrollgrid-section > td {
-        border-bottom-color: rgba(15,23,42,.06);
+        border-bottom-color: #e5e7eb;
       }
-      /* 尽量弱化竖线，只保留极淡轮廓 */
-      .fc-theme-standard .fc-scrollgrid td:not(:last-child) {
-        border-right-color: transparent;
-      }
-      /* 星期表头：小号、加粗、次级灰 */
       .fc .fc-col-header-cell-cushion {
-        font-size: 11px;
-        font-weight: 600;
-        color: var(--muted-2);
+        font-size: 10.5px;
+        font-weight: 700;
+        color: #777777;
         padding: 0.4rem 0;
         text-transform: none;
       }
-      /* 日期数字：当前月更深，非当前月更浅 */
+      .fc .fc-daygrid-day-top {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        min-height: 24px;
+      }
+      .fc .fc-daygrid-day-frame {
+        min-height: 118px;
+      }
       .fc .fc-daygrid-day-number {
-        font-size: 12px;
+        font-size: 11px;
         font-weight: 500;
-        color: #0f172a;
-        padding: 0.2rem 0.3rem;
-        border-radius: 999px;
+        color: var(--fg);
+        width: auto;
+        height: auto;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 0;
+        white-space: nowrap;
+        line-height: 1;
+        padding: 0 .1rem;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Fira Code","Liberation Mono","Courier New", monospace;
       }
       .fc .fc-daygrid-day.fc-day-other .fc-daygrid-day-number {
-        color: rgba(148,163,184,0.95);
+        color: var(--muted);
       }
-      /* 今天：苹果日历风格的小圆点高亮，而不是整格铺色 */
-      .fc .fc-daygrid-day.fc-day-today {
-        background: transparent;
-      }
+      .fc .fc-daygrid-day.fc-day-today { background: transparent; }
       .fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
         background: var(--primary);
-        color: #ffffff;
+        color: #fff;
+        font-weight: 700;
+        width: 22px;
+        height: 22px;
         border-radius: 999px;
-        padding: 0.2rem 0.45rem;
-        box-shadow: 0 0 0 1px rgba(255,255,255,0.8), 0 5px 12px rgba(14,165,233,0.35);
+        padding: 0;
       }
 
-      /* Event bar makeover */
       .fc .fc-daygrid-event,
       .fc .fc-daygrid-event .fc-event-main {
         border: none !important;
       }
       .fc .fc-daygrid-event {
-        padding: 2px 4px;
+        padding: 2px 5px;
         cursor: pointer;
-        transition: filter .12s ease, transform .05s ease;
+        transition: background .16s ease, border-color .16s ease, box-shadow .16s ease, transform .1s ease;
+        background: var(--event-bg, rgba(0,0,0,.03));
+        color: var(--event-fg, #1f2937);
+        border-radius: 3px;
+        border: 1px solid var(--event-border, #dbe2ea);
+        border-left: 4px solid var(--event-band, #64748B);
+        margin-bottom: 2px;
+        box-shadow: 0 1px 0 rgba(15,23,42,.04);
       }
       .fc .fc-daygrid-event:hover {
-        filter: brightness(0.98) saturate(1.05);
+        background: var(--event-bg-hover, rgba(0,0,0,.06));
+        border-color: var(--event-band, #64748B);
+        box-shadow: 0 3px 8px rgba(15,23,42,.10);
+        transform: translateY(-1px);
       }
       .fc .fc-daygrid-event:active {
-        transform: translateY(1px);
+        transform: translateY(0);
       }
       .fc .fc-daygrid-event .fc-event-main {
-        border-radius: 8px;
+        border-radius: 3px;
       }
       .fc .fc-daygrid-event .fc-event-title {
-        padding: 2px 6px 2px 6px;
-        font-size: 12px;
+        padding: 2px 5px;
+        font-size: 11px;
         font-weight: 650;
-        line-height: 1.25;
+        line-height: 1.2;
       }
-      /* left color band */
       .fc .fc-daygrid-event::before {
-        content: "";
-        display: block;
-        position: absolute;
-        left: 3px;
-        top: 4px;
-        bottom: 4px;
-        width: 4px;
-        border-radius: 999px;
-        background: currentColor;
-        opacity: 0.55;
+        content: none;
       }
       .fc .fc-daygrid-event {
         position: relative;
-        padding-left: 10px; /* make room for the band */
+        padding-left: 0;
+      }
+      .fc .fc-daygrid-day-events .fc-daygrid-event-harness {
+        margin-bottom: 2px;
+      }
+      .fc .fc-daygrid-event.is-selected {
+        box-shadow: inset 0 0 0 1px var(--event-band, rgba(3,102,214,.5)), 0 4px 10px rgba(15,23,42,.12);
+        border-color: var(--event-band, rgba(3,102,214,.45));
       }
 
-      /* pastel tag palettes */
       .fc .fc-daygrid-event.tag-long {
-        background: rgba(59,130,246,.16); /* pastel blue */
-        color: rgba(30,64,175,.95);
+        --event-band: #2563EB;
+        --event-bg: #eef4ff;
+        --event-bg-hover: #e3edff;
+        --event-border: #c8dafd;
+        --event-fg: #1e3a8a;
       }
       .fc .fc-daygrid-event.tag-short {
-        background: rgba(34,197,94,.16); /* pastel green */
-        color: rgba(20,83,45,.95);
+        --event-band: #8B5CF6;
+        --event-bg: #f5f0ff;
+        --event-bg-hover: #eee5ff;
+        --event-border: #dccff9;
+        --event-fg: #5b21b6;
       }
       .fc .fc-daygrid-event.tag-hw {
-        background: rgba(249,115,22,.16); /* pastel orange */
-        color: rgba(124,45,18,.95);
+        --event-band: #F59E0B;
+        --event-bg: #fff8eb;
+        --event-bg-hover: #ffefcf;
+        --event-border: #f7ddb0;
+        --event-fg: #9a5b06;
       }
       .fc .fc-daygrid-event.tag-other {
-        background: rgba(14,165,233,.14);
-        color: rgba(7,89,133,.95);
+        --event-band: #14B8A6;
+        --event-bg: #ecfdf8;
+        --event-bg-hover: #dbfaf2;
+        --event-border: #b8eee3;
+        --event-fg: #0f766e;
       }
 
-      /* completed events look calmer */
       .fc .fc-daygrid-event.is-done {
-        filter: grayscale(.15);
-        opacity: 0.65;
+        filter: saturate(.55);
+        opacity: 0.72;
       }
     </style>
   </head>
@@ -216,12 +228,15 @@
             </div>
           </div>
           <div class="flex items-center gap-3">
-            <a href="/" class="btn btn-secondary">列表</a>
+            <nav class="segmented">
+              <a href="/" class="seg">列表</a>
+              <a href="/calendar.html" class="seg active">日历</a>
+            </nav>
           </div>
         </div>
       </header>
 
-      <main class="mx-auto grid max-w-6xl grid-cols-1 gap-4 px-4 py-5 lg:grid-cols-[260px_1fr]">
+      <main class="mx-auto grid max-w-6xl grid-cols-1 gap-4 px-4 py-5 lg:grid-cols-[220px_1fr_260px]">
         <aside class="card flat p-4">
           <div class="mb-3 flex items-center justify-between">
             <div class="text-sm font-semibold">筛选</div>
@@ -249,8 +264,43 @@
         </aside>
 
         <section class="card flat p-3">
-          <div id="calendar" class="min-h-[660px]"></div>
+          <div id="calendar" class="min-h-[760px]"></div>
         </section>
+
+        <aside class="card flat p-4">
+          <div class="mb-3 text-sm font-semibold">任务详情</div>
+          <div id="taskDetailEmpty" class="text-xs muted">点击日历中的任务，在这里查看详细信息。</div>
+          <div id="taskDetail" class="hidden grid gap-3">
+            <div>
+              <div class="text-xs muted">标题</div>
+              <div id="detailTitle" class="mt-1 text-sm font-semibold"></div>
+            </div>
+            <div>
+              <div class="text-xs muted">目标</div>
+              <div id="detailGoal" class="mt-1 text-xs leading-6"></div>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <div class="text-xs muted">状态</div>
+                <div id="detailState" class="mt-1 text-xs font-medium"></div>
+              </div>
+              <div>
+                <div class="text-xs muted">标签</div>
+                <div id="detailTags" class="mt-1 text-xs"></div>
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <div class="text-xs muted">DDL</div>
+                <div id="detailDue" class="mt-1 text-xs log-meta"></div>
+              </div>
+              <div>
+                <div class="text-xs muted">持续时间</div>
+                <div id="detailRange" class="mt-1 text-xs log-meta"></div>
+              </div>
+            </div>
+          </div>
+        </aside>
       </main>
     </div>
 
