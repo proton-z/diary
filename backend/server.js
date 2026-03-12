@@ -31,6 +31,12 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_tasks_completed ON tasks(completed);
   CREATE INDEX IF NOT EXISTS idx_tasks_tag ON tasks(tag);
+  CREATE TABLE IF NOT EXISTS journals (
+    entry_date TEXT PRIMARY KEY,
+    content TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
 `);
 
 // lightweight migration for existing DBs
@@ -79,6 +85,14 @@ function normalizeTags(input) {
 
 function normalizeText(v) {
   return typeof v === 'string' ? v.trim() : '';
+}
+
+function normalizeLongText(v) {
+  return typeof v === 'string' ? v : '';
+}
+
+function isDateIso(v) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(v || '');
 }
 
 app.get('/api/health', (_req, res) => {
@@ -145,6 +159,32 @@ app.get('/api/tasks', (req, res) => {
     return {...r, tags};
   });
   res.json({tasks});
+});
+
+app.get('/api/journals/:date', (req, res) => {
+  const date = typeof req.params.date === 'string' ? req.params.date.trim() : '';
+  if (!isDateIso(date)) return res.status(400).json({error: 'invalid_date'});
+  const row = db.prepare(
+                    'SELECT entry_date, content, created_at, updated_at FROM journals WHERE entry_date = ?')
+                  .get(date);
+  if (!row) return res.json({entry: {entry_date: date, content: '', created_at: '', updated_at: ''}});
+  res.json({entry: row});
+});
+
+app.put('/api/journals/:date', (req, res) => {
+  const date = typeof req.params.date === 'string' ? req.params.date.trim() : '';
+  if (!isDateIso(date)) return res.status(400).json({error: 'invalid_date'});
+  const content = normalizeLongText(req.body?.content).slice(0, 20000);
+  const ts = nowIso();
+  db.prepare(
+        `INSERT INTO journals (entry_date, content, created_at, updated_at)
+         VALUES (@entry_date, @content, @ts, @ts)
+         ON CONFLICT(entry_date) DO UPDATE SET content = excluded.content, updated_at = excluded.updated_at`)
+      .run({entry_date: date, content, ts});
+  const row = db.prepare(
+                    'SELECT entry_date, content, created_at, updated_at FROM journals WHERE entry_date = ?')
+                  .get(date);
+  res.json({entry: row});
 });
 
 app.post('/api/tasks', (req, res) => {

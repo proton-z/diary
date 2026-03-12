@@ -267,6 +267,14 @@
         border-color: #d8dee6;
         color: #64748b;
       }
+      .journal-box{
+        margin-top: 14px;
+        padding-top: 14px;
+        border-top: 1px solid #eaeaea;
+      }
+      .journal-meta{
+        min-height: 18px;
+      }
     </style>
   </head>
   <body>
@@ -354,6 +362,29 @@
                 <div class="text-xs muted">持续时间</div>
                 <div id="detailRange" class="mt-1 text-xs log-meta"></div>
               </div>
+            </div>
+          </div>
+          <div class="journal-box">
+            <div class="mb-2 text-sm font-semibold">每日日记</div>
+            <div class="grid gap-2">
+              <label class="grid gap-1">
+                <span class="text-xs muted">日期</span>
+                <input id="journalDate" type="date" class="input log-meta" />
+              </label>
+              <label class="grid gap-1">
+                <span class="text-xs muted">内容</span>
+                <textarea
+                  id="journalContent"
+                  rows="8"
+                  class="textarea"
+                  placeholder="记录今天的进展、问题、想法..."
+                ></textarea>
+              </label>
+              <div class="flex items-center gap-2">
+                <button id="btnSaveJournal" class="btn btn-secondary flex-1">保存日记</button>
+                <button id="btnTodayJournal" class="btn btn-ghost">今天</button>
+              </div>
+              <div id="journalMeta" class="journal-meta text-xs muted"></div>
             </div>
           </div>
         </aside>
