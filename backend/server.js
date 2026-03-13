@@ -161,6 +161,25 @@ app.get('/api/tasks', (req, res) => {
   res.json({tasks});
 });
 
+app.get('/api/journals', (req, res) => {
+  const from = typeof req.query.from === 'string' ? req.query.from.trim() : '';
+  const to = typeof req.query.to === 'string' ? req.query.to.trim() : '';
+  if (!isDateIso(from) || !isDateIso(to)) {
+    return res.status(400).json({error: 'invalid_range'});
+  }
+  if (from >= to) return res.json({dates: []});
+  const rows = db.prepare(
+                     `SELECT entry_date
+                      FROM journals
+                      WHERE entry_date >= @from
+                        AND entry_date < @to
+                        AND TRIM(content) <> ''
+                      ORDER BY entry_date ASC`)
+                   .all({from, to});
+  const dates = rows.map((r) => r.entry_date).filter(Boolean);
+  res.json({dates});
+});
+
 app.get('/api/journals/:date', (req, res) => {
   const date = typeof req.params.date === 'string' ? req.params.date.trim() : '';
   if (!isDateIso(date)) return res.status(400).json({error: 'invalid_date'});

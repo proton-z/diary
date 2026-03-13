@@ -55,9 +55,40 @@ function taskToEvent(task) {
   };
 }
 
-export function createCalendarView(
-    {calendarEl, getFilters, fetchTasks, onTaskClick}) {
+function toIsoDate(d) {
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+export function createCalendarView({
+  calendarEl,
+  getFilters,
+  fetchTasks,
+  onTaskClick,
+  onDateClick,
+  onViewRangeChange
+}) {
   let selectedEventEl = null;
+  let journalDates = new Set();
+  const dayCellEls = new Map();
+
+  function updateCellDot(cellEl, dateIso) {
+    if (!cellEl) return;
+    const top = cellEl.querySelector('.fc-daygrid-day-top');
+    if (!top) return;
+    const hasJournal = journalDates.has(dateIso);
+    let dot = top.querySelector('.journal-dot');
+    if (hasJournal && !dot) {
+      dot = document.createElement('span');
+      dot.className = 'journal-dot';
+      dot.setAttribute('aria-hidden', 'true');
+      top.appendChild(dot);
+    }
+    if (!hasJournal && dot) dot.remove();
+  }
+
   const cal = new FullCalendar.Calendar(calendarEl, {
     initialView: 'dayGridMonth',
     height: 'auto',
@@ -72,7 +103,33 @@ export function createCalendarView(
     dayCellContent: (arg) => {
       return String(arg.dayNumberText || '').replace('日', '');
     },
+    dayCellDidMount: (arg) => {
+      const dateIso = arg.dateStr || toIsoDate(arg.date);
+      dayCellEls.set(dateIso, arg.el);
+      updateCellDot(arg.el, dateIso);
+      arg.el.classList.add('calendar-day-cell');
+      arg.el.addEventListener('click', (evt) => {
+        const target = evt.target instanceof Element ? evt.target : null;
+        if (!target) return;
+        if (target.closest('.fc-daygrid-event')) return;
+        if (target.closest('.fc-daygrid-more-link')) return;
+        if (target.closest('.fc-popover')) return;
+        if (typeof onDateClick === 'function') onDateClick(dateIso);
+      });
+    },
+    dayCellWillUnmount: (arg) => {
+      const dateIso = arg.dateStr || toIsoDate(arg.date);
+      dayCellEls.delete(dateIso);
+    },
     locale: 'zh-cn',
+    datesSet: (arg) => {
+      if (typeof onViewRangeChange === 'function') {
+        onViewRangeChange({
+          start: toIsoDate(arg.start),
+          endExclusive: toIsoDate(arg.end)
+        });
+      }
+    },
     events: async (info, success, failure) => {
       try {
         const {onlyIncomplete, tag} = getFilters();
@@ -104,6 +161,12 @@ export function createCalendarView(
       if (!selectedEventEl) return;
       selectedEventEl.classList.remove('is-selected');
       selectedEventEl = null;
+    },
+    setJournalDates(dates) {
+      journalDates = new Set((dates || []).filter(Boolean));
+      dayCellEls.forEach((el, dateIso) => {
+        updateCellDot(el, dateIso);
+      });
     }
   };
 }

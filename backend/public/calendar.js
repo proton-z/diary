@@ -6,10 +6,10 @@ const state = {
   onlyIncomplete: true,
   calendar: null,
   selectedTask: null,
-  journalDate: '',
-  journalLoadedDate: '',
-  journalDirty: false,
-  journalLoadingToken: 0
+  selectedJournalDate: '',
+  journalDates: new Set(),
+  journalLoadSeq: 0,
+  journalDotSeq: 0
 };
 
 async function api(path, opts) {
@@ -38,31 +38,126 @@ function getFilters() {
   return {onlyIncomplete: state.onlyIncomplete, tag: state.selectedTag};
 }
 
+function formatCnDate(dateIso) {
+  const date = new Date(`${dateIso}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return dateIso;
+  return new Intl.DateTimeFormat('zh-CN', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  }).format(date);
+}
+
+function getDrawerEls() {
+  return {
+    root: document.querySelector('#journalDrawer'),
+    backdrop: document.querySelector('#journalDrawerBackdrop'),
+    panel: document.querySelector('#journalDrawerPanel'),
+    title: document.querySelector('#journalDateTitle'),
+    input: document.querySelector('#journalText'),
+    save: document.querySelector('#btnJournalSave'),
+    close: document.querySelector('#btnDrawerClose'),
+    meta: document.querySelector('#journalMeta')
+  };
+}
+
+function setDrawerOpen(open) {
+  const {root, input} = getDrawerEls();
+  if (!root) return;
+  root.classList.toggle('open', !!open);
+  root.setAttribute('aria-hidden', open ? 'false' : 'true');
+  if (open && input) {
+    setTimeout(() => input.focus(), 40);
+  }
+}
+
+function closeJournalDrawer() {
+  state.selectedJournalDate = '';
+  setDrawerOpen(false);
+}
+
+function applyJournalDotByContent(dateIso, content) {
+  const hasContent = String(content || '').trim().length > 0;
+  if (hasContent) state.journalDates.add(dateIso);
+  else state.journalDates.delete(dateIso);
+  state.calendar?.setJournalDates(Array.from(state.journalDates));
+}
+
+async function fetchJournalDotDates(range) {
+  if (!range?.start || !range?.endExclusive) return;
+  const seq = ++state.journalDotSeq;
+  try {
+    const qs = new URLSearchParams({from: range.start, to: range.endExclusive});
+    const data = await api(`/api/journals?${qs.toString()}`);
+    if (seq !== state.journalDotSeq) return;
+    state.journalDates = new Set(data?.dates || []);
+    state.calendar?.setJournalDates(Array.from(state.journalDates));
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+async function openJournalDrawer(dateIso) {
+  const els = getDrawerEls();
+  if (!els.root || !els.title || !els.input || !els.save || !els.meta) return;
+  state.selectedJournalDate = dateIso;
+  els.title.textContent = formatCnDate(dateIso);
+  els.meta.textContent = '加载中...';
+  els.input.value = '';
+  els.input.disabled = true;
+  els.save.disabled = true;
+  setDrawerOpen(true);
+  state.calendar?.clearSelection();
+  state.selectedTask = null;
+  renderTaskDetail();
+
+  const seq = ++state.journalLoadSeq;
+  try {
+    const data = await api(`/api/journals/${dateIso}`);
+    if (seq !== state.journalLoadSeq || state.selectedJournalDate !== dateIso) return;
+    const content = data?.entry?.content || '';
+    els.input.value = content;
+    els.input.disabled = false;
+    els.save.disabled = false;
+    els.meta.textContent = data?.entry?.updated_at ? `最近保存：${data.entry.updated_at}` : '还没有记录，写点什么吧。';
+    applyJournalDotByContent(dateIso, content);
+  } catch (e) {
+    if (seq !== state.journalLoadSeq) return;
+    els.meta.textContent = '加载失败';
+    els.input.disabled = false;
+    els.save.disabled = true;
+    alert('加载日记失败：' + e.message);
+  }
+}
+
+async function saveJournal() {
+  const els = getDrawerEls();
+  const dateIso = state.selectedJournalDate;
+  if (!dateIso || !els.input || !els.save || !els.meta) return;
+  els.save.disabled = true;
+  els.meta.textContent = '保存中...';
+  const content = els.input.value || '';
+  try {
+    const data = await api(`/api/journals/${dateIso}`, {
+      method: 'PUT',
+      body: JSON.stringify({content})
+    });
+    if (state.selectedJournalDate !== dateIso) return;
+    els.meta.textContent = data?.entry?.updated_at ? `最近保存：${data.entry.updated_at}` : '已保存';
+    applyJournalDotByContent(dateIso, content);
+  } catch (e) {
+    if (state.selectedJournalDate !== dateIso) return;
+    els.meta.textContent = '保存失败';
+    alert('保存日记失败：' + e.message);
+  } finally {
+    if (state.selectedJournalDate === dateIso) els.save.disabled = false;
+  }
+}
+
 function formatDateLabel(v) {
   const s = (v || '').trim();
   if (!s) return '—';
   return s;
-}
-
-function localTodayIso() {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
-
-function formatTs(v) {
-  if (!v) return '尚未保存';
-  const d = new Date(v);
-  if (Number.isNaN(d.getTime())) return '已保存';
-  return d.toLocaleString('zh-CN', {hour12: false});
-}
-
-function setJournalMeta(text) {
-  const el = document.querySelector('#journalMeta');
-  if (!el) return;
-  el.textContent = text;
 }
 
 function renderTaskDetail() {
@@ -127,62 +222,6 @@ async function toggleSelectedTask() {
   }
 }
 
-async function loadJournal(date) {
-  const dateEl = document.querySelector('#journalDate');
-  const contentEl = document.querySelector('#journalContent');
-  const saveBtn = document.querySelector('#btnSaveJournal');
-  if (!dateEl || !contentEl || !saveBtn) return;
-  const value = (date || '').trim();
-  if (!value) return;
-  const token = ++state.journalLoadingToken;
-  saveBtn.disabled = true;
-  setJournalMeta('正在加载...');
-  try {
-    const data = await api(`/api/journals/${value}`);
-    if (token !== state.journalLoadingToken) return;
-    const entry = data?.entry || {};
-    contentEl.value = entry.content || '';
-    state.journalDate = value;
-    state.journalLoadedDate = value;
-    state.journalDirty = false;
-    setJournalMeta(`最后保存：${formatTs(entry.updated_at)}`);
-  } catch (e) {
-    setJournalMeta('加载失败');
-    alert('读取日记失败：' + e.message);
-  } finally {
-    if (token === state.journalLoadingToken) saveBtn.disabled = false;
-  }
-}
-
-async function saveJournal() {
-  const dateEl = document.querySelector('#journalDate');
-  const contentEl = document.querySelector('#journalContent');
-  const saveBtn = document.querySelector('#btnSaveJournal');
-  if (!dateEl || !contentEl || !saveBtn) return;
-  const value = (dateEl.value || '').trim();
-  if (!value) {
-    dateEl.focus();
-    return;
-  }
-  saveBtn.disabled = true;
-  setJournalMeta('正在保存...');
-  try {
-    const data = await api(`/api/journals/${value}`, {
-      method: 'PUT',
-      body: JSON.stringify({content: contentEl.value || ''})
-    });
-    state.journalDate = value;
-    state.journalLoadedDate = value;
-    state.journalDirty = false;
-    setJournalMeta(`最后保存：${formatTs(data?.entry?.updated_at)}`);
-  } catch (e) {
-    setJournalMeta('保存失败');
-    alert('保存日记失败：' + e.message);
-  } finally {
-    saveBtn.disabled = false;
-  }
-}
-
 function render() {
   renderTagChips({
     el: document.querySelector('#tagList'),
@@ -207,6 +246,12 @@ async function bootstrap() {
     onTaskClick: (task) => {
       state.selectedTask = task || null;
       renderTaskDetail();
+    },
+    onDateClick: (dateIso) => {
+      openJournalDrawer(dateIso);
+    },
+    onViewRangeChange: (range) => {
+      fetchJournalDotDates(range);
     }
   });
 
@@ -230,34 +275,22 @@ async function bootstrap() {
       .addEventListener('click', () => {
         toggleSelectedTask();
       });
-  document.querySelector('#journalDate').addEventListener('change', (e) => {
-    const nextDate = (e.target.value || '').trim();
-    if (!nextDate) return;
-    state.journalDate = nextDate;
-    loadJournal(nextDate);
+  document.querySelector('#journalDrawerBackdrop')
+      ?.addEventListener('click', () => {
+        closeJournalDrawer();
+      });
+  document.querySelector('#btnDrawerClose')?.addEventListener('click', () => {
+    closeJournalDrawer();
   });
-  document.querySelector('#journalContent').addEventListener('input', () => {
-    state.journalDirty = true;
-    setJournalMeta('未保存更改');
-  });
-  document.querySelector('#btnSaveJournal').addEventListener('click', () => {
+  document.querySelector('#btnJournalSave')?.addEventListener('click', () => {
     saveJournal();
   });
-  document.querySelector('#btnTodayJournal').addEventListener('click', () => {
-    const today = localTodayIso();
-    const dateEl = document.querySelector('#journalDate');
-    dateEl.value = today;
-    state.journalDate = today;
-    loadJournal(today);
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeJournalDrawer();
   });
 
   render();
   renderTaskDetail();
-  const today = localTodayIso();
-  const dateEl = document.querySelector('#journalDate');
-  dateEl.value = today;
-  state.journalDate = today;
-  await loadJournal(today);
 }
 
 bootstrap().catch((e) => {
