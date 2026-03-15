@@ -348,12 +348,74 @@
       .fc .calendar-day-cell {
         cursor: pointer;
       }
+      .fc .calendar-day-cell.has-journal-entry {
+        background: linear-gradient(180deg, rgba(99, 102, 241, 0.06) 0%, rgba(99, 102, 241, 0.02) 40%, rgba(255, 255, 255, 0) 100%);
+      }
+      .fc .calendar-day-cell.journal-level-rich {
+        background: linear-gradient(180deg, rgba(79, 70, 229, 0.12) 0%, rgba(79, 70, 229, 0.06) 45%, rgba(255, 255, 255, 0) 100%);
+      }
+      .fc .calendar-day-cell.journal-level-regular {
+        background: linear-gradient(180deg, rgba(99, 102, 241, 0.08) 0%, rgba(99, 102, 241, 0.03) 42%, rgba(255, 255, 255, 0) 100%);
+      }
+      .fc .calendar-day-cell.journal-level-tiny {
+        background: linear-gradient(180deg, rgba(129, 140, 248, 0.06) 0%, rgba(129, 140, 248, 0.02) 38%, rgba(255, 255, 255, 0) 100%);
+      }
+      .fc .calendar-day-cell.has-journal-entry:not(.fc-day-today) .fc-daygrid-day-number {
+        color: #4338ca;
+      }
+      .fc .calendar-day-cell.has-journal-entry:not(.fc-day-today) .fc-daygrid-day-number.has-journal-mark {
+        font-weight: 700;
+      }
+      .fc .calendar-day-cell.has-journal-entry:not(.fc-day-today) .fc-daygrid-day-top::after {
+        content: "记";
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 16px;
+        height: 16px;
+        padding: 0 5px;
+        border-radius: 999px;
+        font-size: 10px;
+        font-weight: 700;
+        color: #4338ca;
+        background: rgba(99, 102, 241, 0.12);
+        border: 1px solid rgba(99, 102, 241, 0.18);
+        letter-spacing: .02em;
+      }
+      .fc .calendar-day-cell.journal-level-rich:not(.fc-day-today) .fc-daygrid-day-top::after {
+        content: "记+";
+        color: #312e81;
+        background: rgba(79, 70, 229, 0.2);
+        border-color: rgba(79, 70, 229, 0.28);
+      }
+      .fc .calendar-day-cell.journal-level-tiny:not(.fc-day-today) .fc-daygrid-day-top::after {
+        content: "记";
+        color: #4f46e5;
+        background: rgba(129, 140, 248, 0.12);
+        border-color: rgba(129, 140, 248, 0.2);
+      }
       .fc .journal-dot {
-        width: 6px;
-        height: 6px;
+        width: 7px;
+        height: 7px;
         border-radius: 999px;
         display: inline-block;
-        background: #9ca3af;
+        background: radial-gradient(circle at 35% 35%, #ffffff 0 24%, #6366f1 24% 100%);
+        box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.24), 0 0 10px rgba(99, 102, 241, 0.36);
+      }
+      .fc .journal-dot.is-rich {
+        width: 8px;
+        height: 8px;
+        background: radial-gradient(circle at 35% 35%, #ffffff 0 24%, #4338ca 24% 100%);
+        box-shadow: 0 0 0 1px rgba(67, 56, 202, 0.3), 0 0 13px rgba(67, 56, 202, 0.4);
+      }
+      .fc .journal-dot.is-regular {
+        background: radial-gradient(circle at 35% 35%, #ffffff 0 24%, #4f46e5 24% 100%);
+      }
+      .fc .journal-dot.is-tiny {
+        width: 6px;
+        height: 6px;
+        background: radial-gradient(circle at 35% 35%, #ffffff 0 24%, #818cf8 24% 100%);
+        box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.2), 0 0 8px rgba(99, 102, 241, 0.24);
       }
       .journal-drawer-root {
         position: fixed;
@@ -403,6 +465,79 @@
         line-height: 1.2;
         letter-spacing: -0.02em;
         color: #111827;
+      }
+      .journal-sub-meta {
+        margin-top: 4px;
+        font-size: 12px;
+        color: #94a3b8;
+      }
+      .journal-stats {
+        margin-top: 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .journal-stat-chip {
+        display: inline-flex;
+        align-items: center;
+        padding: 3px 8px;
+        border-radius: 999px;
+        border: 1px solid #e2e8f0;
+        background: #f8fafc;
+        font-size: 11px;
+        color: #64748b;
+      }
+      .journal-sync {
+        border-color: #dbeafe;
+        background: #eff6ff;
+        color: #2563eb;
+      }
+      .journal-sync[data-state="editing"] {
+        border-color: #e9d5ff;
+        background: #faf5ff;
+        color: #7e22ce;
+      }
+      .journal-sync[data-state="saving"] {
+        border-color: #bfdbfe;
+        background: #eff6ff;
+        color: #1d4ed8;
+      }
+      .journal-sync[data-state="error"] {
+        border-color: #fecaca;
+        background: #fef2f2;
+        color: #dc2626;
+      }
+      .journal-sync[data-state="synced"] {
+        border-color: #d1fae5;
+        background: #ecfdf5;
+        color: #047857;
+      }
+      .journal-templates {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 8px;
+      }
+      .journal-template-btn {
+        height: 27px;
+        padding: 0 9px;
+        border-radius: 999px;
+        border: 1px solid #e5e7eb;
+        background: #fff;
+        font-size: 11px;
+        color: #64748b;
+      }
+      .journal-template-btn:hover {
+        border-color: #cbd5e1;
+        color: #334155;
+        background: #f8fafc;
+      }
+      .journal-footer-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
       }
       .journal-text {
         width: 100%;
@@ -536,13 +671,29 @@
         <aside id="journalDrawerPanel" class="journal-drawer-panel" role="dialog" aria-modal="true" aria-label="每日日记抽屉">
           <div class="journal-drawer-body">
             <div class="flex items-start justify-between gap-4">
-              <div id="journalDateTitle" class="journal-date-title">—</div>
+              <div>
+                <div id="journalDateTitle" class="journal-date-title">—</div>
+                <div id="journalSubMeta" class="journal-sub-meta"></div>
+                <div class="journal-stats">
+                  <span id="journalStatChars" class="journal-stat-chip">字数 0</span>
+                  <span id="journalStatWords" class="journal-stat-chip">词数 0</span>
+                  <span id="journalSyncState" class="journal-stat-chip journal-sync" data-state="loading">加载中</span>
+                </div>
+                <div class="journal-templates">
+                  <button id="btnTplSummary" class="journal-template-btn" type="button">+ 今日总结</button>
+                  <button id="btnTplPlan" class="journal-template-btn" type="button">+ 明日计划</button>
+                  <button id="btnTplReflect" class="journal-template-btn" type="button">+ 复盘反思</button>
+                </div>
+              </div>
               <button id="btnDrawerClose" class="btn btn-ghost" style="height:30px;padding:0 .65rem;font-size:12px">关闭</button>
             </div>
             <textarea id="journalText" class="journal-text" placeholder="今天发生了什么？"></textarea>
             <div class="journal-footer">
               <div id="journalMeta" class="journal-meta">还没有记录，写点什么吧。</div>
-              <button id="btnJournalSave" class="btn btn-primary" style="height:34px;padding:0 .95rem;font-size:12px">保存</button>
+              <div class="journal-footer-actions">
+                <button id="btnJournalClear" class="btn btn-ghost" style="height:34px;padding:0 .9rem;font-size:12px">清空</button>
+                <button id="btnJournalSave" class="btn btn-primary" style="height:34px;padding:0 .95rem;font-size:12px">保存</button>
+              </div>
             </div>
           </div>
         </aside>

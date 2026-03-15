@@ -167,9 +167,9 @@ app.get('/api/journals', (req, res) => {
   if (!isDateIso(from) || !isDateIso(to)) {
     return res.status(400).json({error: 'invalid_range'});
   }
-  if (from >= to) return res.json({dates: []});
+  if (from >= to) return res.json({dates: [], marks: []});
   const rows = db.prepare(
-                     `SELECT entry_date
+                     `SELECT entry_date, updated_at, LENGTH(TRIM(content)) AS content_len
                       FROM journals
                       WHERE entry_date >= @from
                         AND entry_date < @to
@@ -177,7 +177,12 @@ app.get('/api/journals', (req, res) => {
                       ORDER BY entry_date ASC`)
                    .all({from, to});
   const dates = rows.map((r) => r.entry_date).filter(Boolean);
-  res.json({dates});
+  const marks = rows.map((r) => {
+    const len = Number(r.content_len) || 0;
+    const level = len >= 360 ? 'rich' : len >= 120 ? 'regular' : 'tiny';
+    return {date: r.entry_date, length: len, level, updated_at: r.updated_at || ''};
+  });
+  res.json({dates, marks});
 });
 
 app.get('/api/journals/:date', (req, res) => {

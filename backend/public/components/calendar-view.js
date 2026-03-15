@@ -71,20 +71,37 @@ export function createCalendarView({
   onViewRangeChange
 }) {
   let selectedEventEl = null;
-  let journalDates = new Set();
+  let journalMarks = new Map();
   const dayCellEls = new Map();
 
   function updateCellDot(cellEl, dateIso) {
     if (!cellEl) return;
     const top = cellEl.querySelector('.fc-daygrid-day-top');
+    const numberEl = cellEl.querySelector('.fc-daygrid-day-number');
     if (!top) return;
-    const hasJournal = journalDates.has(dateIso);
+    const mark = journalMarks.get(dateIso) || null;
+    const hasJournal = !!mark;
+    cellEl.classList.toggle('has-journal-entry', hasJournal);
+    cellEl.classList.toggle('journal-level-rich', mark?.level === 'rich');
+    cellEl.classList.toggle('journal-level-regular', mark?.level === 'regular');
+    cellEl.classList.toggle('journal-level-tiny', mark?.level === 'tiny');
+    if (numberEl) numberEl.classList.toggle('has-journal-mark', hasJournal);
     let dot = top.querySelector('.journal-dot');
     if (hasJournal && !dot) {
       dot = document.createElement('span');
       dot.className = 'journal-dot';
       dot.setAttribute('aria-hidden', 'true');
       top.appendChild(dot);
+    }
+    if (dot) {
+      dot.classList.toggle('is-rich', mark?.level === 'rich');
+      dot.classList.toggle('is-regular', mark?.level === 'regular');
+      dot.classList.toggle('is-tiny', mark?.level === 'tiny');
+      const label = mark?.level === 'rich' ? '内容丰富' :
+          mark?.level === 'regular'        ? '内容适中' :
+                                             '简短记录';
+      const len = Number(mark?.length) || 0;
+      dot.setAttribute('title', hasJournal ? `当天有日记 · ${label} · ${len} 字` : '');
     }
     if (!hasJournal && dot) dot.remove();
   }
@@ -163,7 +180,24 @@ export function createCalendarView({
       selectedEventEl = null;
     },
     setJournalDates(dates) {
-      journalDates = new Set((dates || []).filter(Boolean));
+      journalMarks = new Map(
+          (dates || []).filter(Boolean).map((date) => [date, {date, level: 'tiny', length: 1}]));
+      dayCellEls.forEach((el, dateIso) => {
+        updateCellDot(el, dateIso);
+      });
+    },
+    setJournalMarks(marks) {
+      journalMarks = new Map(
+          (marks || [])
+              .filter((m) => m && typeof m.date === 'string' && m.date)
+              .map((m) => [
+                m.date,
+                {
+                  date: m.date,
+                  level: m.level === 'rich' || m.level === 'regular' ? m.level : 'tiny',
+                  length: Number(m.length) || 0
+                }
+              ]));
       dayCellEls.forEach((el, dateIso) => {
         updateCellDot(el, dateIso);
       });
