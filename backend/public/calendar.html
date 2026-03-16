@@ -534,6 +534,52 @@
         color: #334155;
         background: #f8fafc;
       }
+      .journal-media-tools {
+        margin-top: 10px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .journal-media-btn {
+        height: 28px;
+        padding: 0 10px;
+        border-radius: 999px;
+        border: 1px solid #dbe2ea;
+        background: #ffffff;
+        font-size: 11px;
+        color: #475569;
+      }
+      .journal-media-btn:hover {
+        border-color: #bfccda;
+        background: #f8fafc;
+        color: #334155;
+      }
+      .journal-media-tip {
+        font-size: 11px;
+        color: #94a3b8;
+      }
+      .journal-mode-switch {
+        margin-top: 8px;
+        display: inline-flex;
+        align-items: center;
+        border: 1px solid #e2e8f0;
+        border-radius: 999px;
+        overflow: hidden;
+      }
+      .journal-mode-btn {
+        height: 27px;
+        padding: 0 11px;
+        border: none;
+        background: #ffffff;
+        font-size: 11px;
+        color: #64748b;
+      }
+      .journal-mode-btn.is-active {
+        background: #eef2ff;
+        color: #4338ca;
+        font-weight: 700;
+      }
       .journal-footer-actions {
         display: flex;
         align-items: center;
@@ -552,6 +598,101 @@
       }
       .journal-text::placeholder {
         color: #9ca3af;
+      }
+      .journal-image-preview-list {
+        margin-top: 8px;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+        gap: 8px;
+      }
+      .journal-image-item {
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        overflow: hidden;
+        background: #f8fafc;
+      }
+      .journal-image-item img {
+        width: 100%;
+        height: 76px;
+        object-fit: cover;
+        display: block;
+      }
+      .journal-image-item a {
+        display: block;
+        padding: 4px 6px;
+        font-size: 10px;
+        color: #64748b;
+        text-decoration: none;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .journal-markdown-preview {
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        padding: 2px 2px 2px 0;
+        font-size: 15px;
+        line-height: 1.8;
+        color: #1f2937;
+      }
+      .journal-markdown-preview h1,
+      .journal-markdown-preview h2,
+      .journal-markdown-preview h3,
+      .journal-markdown-preview h4,
+      .journal-markdown-preview h5,
+      .journal-markdown-preview h6 {
+        font-weight: 700;
+        line-height: 1.4;
+        margin: 0.6em 0 0.35em;
+        color: #0f172a;
+      }
+      .journal-markdown-preview h1 { font-size: 1.55em; }
+      .journal-markdown-preview h2 { font-size: 1.35em; }
+      .journal-markdown-preview h3 { font-size: 1.2em; }
+      .journal-markdown-preview p {
+        margin: 0.45em 0;
+      }
+      .journal-markdown-preview ul,
+      .journal-markdown-preview ol {
+        margin: 0.45em 0 0.45em 1.2em;
+      }
+      .journal-markdown-preview blockquote {
+        margin: 0.5em 0;
+        border-left: 3px solid #cbd5e1;
+        padding-left: 10px;
+        color: #475569;
+      }
+      .journal-markdown-preview pre {
+        margin: 0.55em 0;
+        border-radius: 10px;
+        border: 1px solid #e2e8f0;
+        background: #f8fafc;
+        padding: 10px;
+        overflow: auto;
+      }
+      .journal-markdown-preview code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Fira Code", "Courier New", monospace;
+        font-size: 0.92em;
+      }
+      .journal-markdown-preview p code,
+      .journal-markdown-preview li code {
+        background: #f1f5f9;
+        padding: 1px 4px;
+        border-radius: 4px;
+      }
+      .journal-markdown-preview img {
+        max-width: 100%;
+        border-radius: 10px;
+        border: 1px solid #e2e8f0;
+        margin: 0.4em 0;
+      }
+      .journal-markdown-preview a {
+        color: #2563eb;
+        text-decoration: underline;
+      }
+      .journal-markdown-placeholder {
+        color: #94a3b8;
       }
       .journal-footer {
         display: flex;
@@ -684,10 +825,21 @@
                   <button id="btnTplPlan" class="journal-template-btn" type="button">+ 明日计划</button>
                   <button id="btnTplReflect" class="journal-template-btn" type="button">+ 复盘反思</button>
                 </div>
+                <div class="journal-media-tools">
+                  <input id="journalImageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" class="hidden" />
+                  <button id="btnJournalInsertImage" class="journal-media-btn" type="button">+ 插入图片</button>
+                  <span class="journal-media-tip">支持 png/jpg/webp/gif，单张 ≤ 4MB</span>
+                </div>
+                <div class="journal-mode-switch">
+                  <button id="btnJournalModeEdit" class="journal-mode-btn is-active" type="button">编辑</button>
+                  <button id="btnJournalModePreview" class="journal-mode-btn" type="button">预览</button>
+                </div>
               </div>
               <button id="btnDrawerClose" class="btn btn-ghost" style="height:30px;padding:0 .65rem;font-size:12px">关闭</button>
             </div>
             <textarea id="journalText" class="journal-text" placeholder="今天发生了什么？"></textarea>
+            <div id="journalMarkdownPreview" class="journal-markdown-preview hidden"></div>
+            <div id="journalImagePreviewList" class="journal-image-preview-list"></div>
             <div class="journal-footer">
               <div id="journalMeta" class="journal-meta">还没有记录，写点什么吧。</div>
               <div class="journal-footer-actions">

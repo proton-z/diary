@@ -12,7 +12,9 @@ const state = {
   journalDotSeq: 0,
   journalDirty: false,
   journalAutoSaveTimer: 0,
-  journalSaving: false
+  journalSaving: false,
+  journalUploading: false,
+  journalEditorMode: 'edit'
 };
 
 async function api(path, opts) {
@@ -66,7 +68,13 @@ function getDrawerEls() {
     sync: document.querySelector('#journalSyncState'),
     templateSummary: document.querySelector('#btnTplSummary'),
     templatePlan: document.querySelector('#btnTplPlan'),
-    templateReflect: document.querySelector('#btnTplReflect')
+    templateReflect: document.querySelector('#btnTplReflect'),
+    insertImage: document.querySelector('#btnJournalInsertImage'),
+    imageFile: document.querySelector('#journalImageFile'),
+    imagePreviewList: document.querySelector('#journalImagePreviewList'),
+    markdownPreview: document.querySelector('#journalMarkdownPreview'),
+    modeEdit: document.querySelector('#btnJournalModeEdit'),
+    modePreview: document.querySelector('#btnJournalModePreview')
   };
 }
 
@@ -151,6 +159,215 @@ function renderJournalStats(content) {
   if (statWords) statWords.textContent = `词数 ${words}`;
 }
 
+function escapeHtml(v) {
+  return String(v || '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;');
+}
+
+function normalizeUrl(raw) {
+  const v = String(raw || '').trim();
+  if (!v) return '';
+  if (/^https?:\/\//i.test(v)) return v;
+  if (v.startsWith('/uploads/journals/')) return v;
+  return '';
+}
+
+function renderInlineMarkdown(text) {
+  let html = escapeHtml(text);
+  html = html.replace(
+      /!\[([^\]]*)\]\(([^)\s]+)\)/g,
+      (_m, alt, rawUrl) => {
+        const url = normalizeUrl(rawUrl);
+        if (!url) return escapeHtml(_m);
+        return `<img src="${escapeHtml(url)}" alt="${escapeHtml(alt)}" loading="lazy" />`;
+      });
+  html = html.replace(
+      /\[([^\]]+)\]\(([^)\s]+)\)/g,
+      (_m, label, rawUrl) => {
+        const url = normalizeUrl(rawUrl);
+        if (!url) return escapeHtml(_m);
+        return `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(label)}</a>`;
+      });
+  html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+  return html;
+}
+
+function renderMarkdownToHtml(markdown) {
+  const lines = String(markdown || '').replace(/\r\n/g, '\n').split('\n');
+  if (!lines.some((line) => line.trim())) {
+    return '<p class="journal-markdown-placeholder">预览模式：支持标题、列表、引用、代码、链接和图片。</p>';
+  }
+  const chunks = [];
+  let inCode = false;
+  let codeLines = [];
+  let listType = '';
+  let blockquoteOpen = false;
+
+  const closeList = () => {
+    if (listType) {
+      chunks.push(`</${listType}>`);
+      listType = '';
+    }
+  };
+  const closeBlockquote = () => {
+    if (blockquoteOpen) {
+      chunks.push('</blockquote>');
+      blockquoteOpen = false;
+    }
+  };
+
+  for (const line of lines) {
+    if (line.startsWith('```')) {
+      closeList();
+      closeBlockquote();
+      if (!inCode) {
+        inCode = true;
+        codeLines = [];
+      } else {
+        chunks.push(`<pre><code>${escapeHtml(codeLines.join('\n'))}</code></pre>`);
+        inCode = false;
+        codeLines = [];
+      }
+      continue;
+    }
+    if (inCode) {
+      codeLines.push(line);
+      continue;
+    }
+    if (!line.trim()) {
+      closeList();
+      closeBlockquote();
+      continue;
+    }
+
+    const heading = line.match(/^(#{1,6})\s+(.*)$/);
+    if (heading) {
+      closeList();
+      closeBlockquote();
+      const level = heading[1].length;
+      chunks.push(`<h${level}>${renderInlineMarkdown(heading[2])}</h${level}>`);
+      continue;
+    }
+
+    const quote = line.match(/^>\s?(.*)$/);
+    if (quote) {
+      closeList();
+      if (!blockquoteOpen) {
+        chunks.push('<blockquote>');
+        blockquoteOpen = true;
+      }
+      chunks.push(`<p>${renderInlineMarkdown(quote[1])}</p>`);
+      continue;
+    } else {
+      closeBlockquote();
+    }
+
+    const ol = line.match(/^\d+\.\s+(.*)$/);
+    if (ol) {
+      if (listType !== 'ol') {
+        closeList();
+        listType = 'ol';
+        chunks.push('<ol>');
+      }
+      chunks.push(`<li>${renderInlineMarkdown(ol[1])}</li>`);
+      continue;
+    }
+
+    const ul = line.match(/^[-*+]\s+(.*)$/);
+    if (ul) {
+      if (listType !== 'ul') {
+        closeList();
+        listType = 'ul';
+        chunks.push('<ul>');
+      }
+      chunks.push(`<li>${renderInlineMarkdown(ul[1])}</li>`);
+      continue;
+    }
+
+    if (/^(-{3,}|\*{3,})$/.test(line.trim())) {
+      closeList();
+      closeBlockquote();
+      chunks.push('<hr />');
+      continue;
+    }
+
+    closeList();
+    chunks.push(`<p>${renderInlineMarkdown(line)}</p>`);
+  }
+
+  closeList();
+  closeBlockquote();
+  if (inCode) {
+    chunks.push(`<pre><code>${escapeHtml(codeLines.join('\n'))}</code></pre>`);
+  }
+  return chunks.join('');
+}
+
+function renderJournalMarkdownPreview(content) {
+  const {markdownPreview} = getDrawerEls();
+  if (!markdownPreview) return;
+  markdownPreview.innerHTML = renderMarkdownToHtml(content);
+}
+
+function setJournalEditorMode(mode) {
+  const nextMode = mode === 'preview' ? 'preview' : 'edit';
+  state.journalEditorMode = nextMode;
+  const {input, markdownPreview, imagePreviewList, modeEdit, modePreview} =
+      getDrawerEls();
+  if (input) input.classList.toggle('hidden', nextMode !== 'edit');
+  if (markdownPreview) markdownPreview.classList.toggle('hidden', nextMode !== 'preview');
+  if (imagePreviewList) imagePreviewList.classList.toggle('hidden', nextMode !== 'edit');
+  if (modeEdit) modeEdit.classList.toggle('is-active', nextMode === 'edit');
+  if (modePreview) modePreview.classList.toggle('is-active', nextMode === 'preview');
+  if (nextMode === 'preview') renderJournalMarkdownPreview(input?.value || '');
+}
+
+function extractImageUrls(text) {
+  const raw = String(text || '');
+  const list = [];
+  const md = /!\[[^\]]*\]\((https?:\/\/[^\s)]+|\/uploads\/journals\/[^\s)]+)\)/g;
+  for (const m of raw.matchAll(md)) {
+    if (m[1]) list.push(m[1]);
+  }
+  const plain = /(https?:\/\/\S+\.(?:png|jpg|jpeg|webp|gif)|\/uploads\/journals\/\S+\.(?:png|jpg|jpeg|webp|gif))/gi;
+  for (const m of raw.matchAll(plain)) {
+    if (m[1]) list.push(m[1]);
+  }
+  return Array.from(new Set(list)).slice(0, 18);
+}
+
+function renderJournalImagePreview(content) {
+  const {imagePreviewList} = getDrawerEls();
+  if (!imagePreviewList) return;
+  const urls = extractImageUrls(content);
+  imagePreviewList.innerHTML = '';
+  if (!urls.length) return;
+  const frag = document.createDocumentFragment();
+  for (const url of urls) {
+    const item = document.createElement('div');
+    item.className = 'journal-image-item';
+    const img = document.createElement('img');
+    img.loading = 'lazy';
+    img.src = url;
+    img.alt = '日记图片';
+    const link = document.createElement('a');
+    link.href = url;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.textContent = '打开原图';
+    item.appendChild(img);
+    item.appendChild(link);
+    frag.appendChild(item);
+  }
+  imagePreviewList.appendChild(frag);
+}
+
 function setJournalSyncState(kind, text) {
   const {sync} = getDrawerEls();
   if (!sync) return;
@@ -165,6 +382,64 @@ function markJournalDirty() {
   state.journalAutoSaveTimer = setTimeout(() => {
     saveJournal({mode: 'auto'});
   }, 1000);
+}
+
+function insertTextAtCursor(inputEl, text) {
+  if (!inputEl) return;
+  const start = Number.isFinite(inputEl.selectionStart) ? inputEl.selectionStart : inputEl.value.length;
+  const end = Number.isFinite(inputEl.selectionEnd) ? inputEl.selectionEnd : inputEl.value.length;
+  const before = inputEl.value.slice(0, start);
+  const after = inputEl.value.slice(end);
+  inputEl.value = `${before}${text}${after}`;
+  const nextPos = start + text.length;
+  inputEl.selectionStart = nextPos;
+  inputEl.selectionEnd = nextPos;
+}
+
+async function uploadJournalImage(file) {
+  const allow = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif']);
+  if (!allow.has(file.type || '')) throw new Error('仅支持 png/jpg/webp/gif');
+  if (file.size > 4 * 1024 * 1024) throw new Error('图片超过 4MB');
+  const dataUrl = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(new Error('读取图片失败'));
+    reader.readAsDataURL(file);
+  });
+  const data =
+      await api('/api/journal-images', {method: 'POST', body: JSON.stringify({dataUrl})});
+  if (!data?.image?.url) throw new Error('图片上传失败');
+  return data.image.url;
+}
+
+async function handleInsertImage() {
+  const els = getDrawerEls();
+  if (!els.input || !els.imageFile || state.journalUploading) return;
+  const file = els.imageFile.files?.[0];
+  if (!file) return;
+  state.journalUploading = true;
+  if (els.insertImage) {
+    els.insertImage.disabled = true;
+    els.insertImage.textContent = '上传中...';
+  }
+  setJournalSyncState('saving', '图片上传中');
+  try {
+    const url = await uploadJournalImage(file);
+    const snippet = `\n![图片](${url})\n`;
+    insertTextAtCursor(els.input, snippet);
+    els.input.dispatchEvent(new Event('input', {bubbles: true}));
+    setJournalSyncState('editing', '图片已插入');
+  } catch (e) {
+    setJournalSyncState('error', '上传失败');
+    alert(`插入图片失败：${e.message}`);
+  } finally {
+    state.journalUploading = false;
+    if (els.insertImage) {
+      els.insertImage.disabled = false;
+      els.insertImage.textContent = '+ 插入图片';
+    }
+    els.imageFile.value = '';
+  }
 }
 
 async function fetchJournalDotDates(range) {
@@ -203,6 +478,9 @@ async function openJournalDrawer(dateIso) {
   els.save.disabled = true;
   if (els.clear) els.clear.disabled = true;
   renderJournalStats('');
+  renderJournalImagePreview('');
+  renderJournalMarkdownPreview('');
+  setJournalEditorMode('edit');
   setJournalSyncState('loading', '加载中');
   setDrawerOpen(true);
   state.calendar?.clearSelection();
@@ -223,6 +501,8 @@ async function openJournalDrawer(dateIso) {
         `最近更新：${formatIsoDateTime(data.entry.updated_at)}` :
         '还没有记录，写点什么吧。';
     renderJournalStats(content);
+    renderJournalImagePreview(content);
+    renderJournalMarkdownPreview(content);
     setJournalSyncState('synced', content.trim() ? '已同步' : '待记录');
     applyJournalDotByContent(dateIso, content, data?.entry?.updated_at || '');
   } catch (e) {
@@ -407,12 +687,30 @@ async function bootstrap() {
     if (!input) return;
     input.value = '';
     renderJournalStats('');
+    renderJournalImagePreview('');
+    renderJournalMarkdownPreview('');
     markJournalDirty();
   });
   document.querySelector('#journalText')?.addEventListener('input', (e) => {
     const text = e?.target?.value || '';
     renderJournalStats(text);
+    renderJournalImagePreview(text);
+    renderJournalMarkdownPreview(text);
     markJournalDirty();
+  });
+  document.querySelector('#btnJournalModeEdit')?.addEventListener('click', () => {
+    setJournalEditorMode('edit');
+  });
+  document.querySelector('#btnJournalModePreview')
+      ?.addEventListener('click', () => {
+        setJournalEditorMode('preview');
+      });
+  document.querySelector('#btnJournalInsertImage')?.addEventListener('click', () => {
+    const {imageFile} = getDrawerEls();
+    imageFile?.click();
+  });
+  document.querySelector('#journalImageFile')?.addEventListener('change', () => {
+    handleInsertImage();
   });
   document.querySelector('#btnTplSummary')?.addEventListener('click', () => {
     const {input} = getDrawerEls();

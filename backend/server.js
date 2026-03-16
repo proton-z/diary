@@ -1,15 +1,20 @@
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 const express = require('express');
 const Database = require('better-sqlite3');
 
 const DEFAULT_TAGS = ['长期', '短期'];
 
 const app = express();
-app.use(express.json({limit: '1mb'}));
+app.use(express.json({limit: '10mb'}));
 
 const dataDir = path.join(__dirname, 'data');
 if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, {recursive: true});
+const journalUploadDir = path.join(__dirname, 'public', 'uploads', 'journals');
+if (!fs.existsSync(journalUploadDir)) {
+  fs.mkdirSync(journalUploadDir, {recursive: true});
+}
 
 const dbPath = path.join(dataDir, 'tasks.db');
 const db = new Database(dbPath);
@@ -93,6 +98,31 @@ function normalizeLongText(v) {
 
 function isDateIso(v) {
   return /^\d{4}-\d{2}-\d{2}$/.test(v || '');
+}
+
+function parseDataUrlImage(v) {
+  const raw = typeof v === 'string' ? v.trim() : '';
+  const match = raw.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,([A-Za-z0-9+/=\s]+)$/);
+  if (!match) return null;
+  const mime = match[1].toLowerCase();
+  const base64 = match[2].replace(/\s+/g, '');
+  const allow = new Map([
+    ['image/png', 'png'],
+    ['image/jpeg', 'jpg'],
+    ['image/jpg', 'jpg'],
+    ['image/webp', 'webp'],
+    ['image/gif', 'gif']
+  ]);
+  const ext = allow.get(mime);
+  if (!ext) return null;
+  let buffer = null;
+  try {
+    buffer = Buffer.from(base64, 'base64');
+  } catch {
+    return null;
+  }
+  if (!buffer || !buffer.length) return null;
+  return {mime, ext, buffer};
 }
 
 app.get('/api/health', (_req, res) => {
@@ -209,6 +239,27 @@ app.put('/api/journals/:date', (req, res) => {
                     'SELECT entry_date, content, created_at, updated_at FROM journals WHERE entry_date = ?')
                   .get(date);
   res.json({entry: row});
+});
+
+app.post('/api/journal-images', (req, res) => {
+  const dataUrl = req.body?.dataUrl;
+  const parsed = parseDataUrlImage(dataUrl);
+  if (!parsed) return res.status(400).json({error: 'invalid_image_data'});
+  if (parsed.buffer.length > 4 * 1024 * 1024) {
+    return res.status(413).json({error: 'image_too_large'});
+  }
+  const id = `${Date.now()}-${crypto.randomBytes(6).toString('hex')}`;
+  const fileName = `${id}.${parsed.ext}`;
+  const absPath = path.join(journalUploadDir, fileName);
+  fs.writeFileSync(absPath, parsed.buffer);
+  const url = `/uploads/journals/${fileName}`;
+  res.status(201).json({
+    image: {
+      url,
+      mime: parsed.mime,
+      size: parsed.buffer.length
+    }
+  });
 });
 
 app.post('/api/tasks', (req, res) => {
